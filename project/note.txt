@@ -1,0 +1,15 @@
+訓練模型：
+yolo task=segment mode=train model=yolov8n-seg.pt data=C:\Users\owner\Downloads\YOLOv8\ultralytics\Pharmaceutical.v8-7-2-1.yolov8\data.yaml epochs=50 imgsz=640 project=segment name=train
+(路徑要改)
+
+圖片辨識：
+yolo task=segment mode=predict model="C:\Users\owner\Downloads\YOLOv8\ultralytics\segment\train1\weights\best.pt" source="C:\Users\owner\Downloads\YOLOv8\ultralytics\project\images" save=True project="C:\Users\owner\Downloads\YOLOv8\ultralytics\project\results" name="output"
+
+新增：
+git commit -m "Add initial project files and setup environment"
+
+更新：
+git commit -m "Update notes with new information"
+
+刪除：
+git commit -m "Removed virtual environment 'yolov8_env' and its associated files"
