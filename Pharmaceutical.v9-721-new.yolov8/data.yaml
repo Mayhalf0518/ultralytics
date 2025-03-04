@@ -1,0 +1,13 @@
+train: C:\Users\owner\Downloads\YOLOv8\ultralytics\Pharmaceutical.v9-721-new.yolov8\train\images
+val: C:\Users\owner\Downloads\YOLOv8\ultralytics\Pharmaceutical.v9-721-new.yolov8\valid\images
+test: C:\Users\owner\Downloads\YOLOv8\ultralytics\Pharmaceutical.v9-721-new.yolov8\test\images
+
+nc: 2
+names: ['Chipped Pill', 'Intact Pill']
+
+roboflow:
+  workspace: try-pgxkc
+  project: pharmaceutical-ofhjf
+  version: 9
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/try-pgxkc/pharmaceutical-ofhjf/dataset/9
