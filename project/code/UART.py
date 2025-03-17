@@ -3,7 +3,7 @@ import time
 import random
 
 # 設定 UART 連線參數
-serial_port = "COM5"  # Windows 通常是 COMx，Linux/Mac 可能是 /dev/ttyUSB0 或 /dev/ttyACM0
+serial_port = "COM7"  # Windows 通常是 COMx，Linux/Mac 可能是 /dev/ttyUSB0 或 /dev/ttyACM0
 baud_rate = 115200     # 必須與 Arduino `Serial.begin(115200);` 相同
 
 # 開啟 UART 連線
