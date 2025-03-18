@@ -3,11 +3,11 @@ import cv2
 from ultralytics import YOLO
 
 # 載入已訓練的模型
-model_path = r"C:/Users/user/Downloads/YOLOv8/ultralytics/segment/train1/weights/best.pt"
+model_path = r"C:/Yolov8/ultralytics/segment/train1/weights/best.pt"
 model = YOLO(model_path)
 
 # 設定 WebCam IP 和 Port
-ip_address = "10.22.54.143"
+ip_address = "10.22.57.48"
 port = "8080"
 camera_link = f"http://{ip_address}:{port}/video"
 
