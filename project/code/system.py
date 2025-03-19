@@ -15,7 +15,7 @@ model_path = r"C:/Yolov8/ultralytics/segment/train1/weights/best.pt"
 model = YOLO(model_path)
 
 # 設定 WebCam 影像串流來源
-ip_address = "10.22.57.48"
+ip_address = "10.22.54.143"
 port = "8080"
 camera_link = f"http://{ip_address}:{port}/video"
 
