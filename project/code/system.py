@@ -94,8 +94,10 @@ while cap.isOpened():
     #    received_data = ser.readline().decode().strip()
     #    print(f"從 Arduino 接收: {received_data}")
 
+
+    frame_resized = cv2.resize(frame, (960, 540))  # 縮小影像
     # 顯示影像
-    cv2.imshow("YOLOv8 Detection - Real-Time", frame)
+    cv2.imshow("YOLOv8 Detection - Real-Time", frame_resized)
 
     # 按 'q' 退出
     if cv2.waitKey(1) & 0xFF == ord('q'):
