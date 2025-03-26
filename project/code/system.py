@@ -65,9 +65,9 @@ while cap.isOpened():
 
             # 記錄當前偵測到的類別
             if label == "Chipped Pill":
-                detected_label = "0"  # 瑕疵
+                detected_label = "1"  # 瑕疵
             elif label == "Intact Pill":
-                detected_label = "1"  # 良好
+                detected_label = "0"  # 良好
 
     # **只在當前結果與上次不同時發送 UART 訊息**
     if detected_label is not None and detected_label != last_sent:
