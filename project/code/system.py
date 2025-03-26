@@ -41,20 +41,6 @@ def read_serial():
 serial_thread = threading.Thread(target=read_serial, daemon=True)
 serial_thread.start()
 
-# **手動輸入 1 或 0 (獨立處理)**
-def manual_input():
-    while True:
-        user_input = input("請輸入 1 (瑕疵) 或 0 (良品)：").strip()
-        if user_input in ["1", "0"]:
-            ser.write((user_input + "\n").encode())  # 傳送數據
-            print(f"[已發送] {user_input}")
-        else:
-            print("請輸入正確的數值 (1 或 0)")
-
-# 啟動執行緒來讀取手動輸入
-input_thread = threading.Thread(target=manual_input, daemon=True)
-input_thread.start()
-
 # 影像辨識 + UART 傳輸
 while cap.isOpened():
     ret, frame = cap.read()
@@ -79,24 +65,18 @@ while cap.isOpened():
 
             # 記錄當前偵測到的類別
             if label == "Chipped Pill":
-                detected_label = "1"  # 瑕疵
+                detected_label = "0"  # 瑕疵
             elif label == "Intact Pill":
-                detected_label = "0"  # 良好
+                detected_label = "1"  # 良好
 
-    # 只在當前結果與上次不同時發送 UART 訊息，避免重複傳輸
-    #if detected_label is not None and detected_label != last_sent:
-    #    ser.write((detected_label + "\n").encode())  # 傳送 "1" 或 "0"
-    #    print(f"發送至 Arduino: {detected_label}")
-    #    last_sent = detected_label  # 更新記錄，避免重複發送
+    # **只在當前結果與上次不同時發送 UART 訊息**
+    if detected_label is not None and detected_label != last_sent:
+        ser.write((detected_label + "\n").encode())  # 傳送 "1" 或 "0"
+        print(f"發送至 Arduino: {detected_label}")
+        last_sent = detected_label  # 更新記錄，避免重複發送
 
-    # 接收 Arduino 回傳的數據
-    #if ser.in_waiting > 0:
-    #    received_data = ser.readline().decode().strip()
-    #    print(f"從 Arduino 接收: {received_data}")
-
-
-    frame_resized = cv2.resize(frame, (960, 540))  # 縮小影像
-    # 顯示影像
+    # 影像縮小後顯示
+    frame_resized = cv2.resize(frame, (960, 540))
     cv2.imshow("YOLOv8 Detection - Real-Time", frame_resized)
 
     # 按 'q' 退出
