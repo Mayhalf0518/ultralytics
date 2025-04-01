@@ -6,7 +6,7 @@ from ultralytics import YOLO
 
 # 初始化 UART 連線 (請確認 COM Port 是否正確)
 serial_port = "COM7"  # Windows 使用 COM7，Linux/Mac 可能是 /dev/ttyUSB0
-baud_rate = 9600  # Arduino 需設定 `Serial.begin(115200);`
+baud_rate = 4800  # Arduino 需設定 `Serial.begin(115200);`
 ser = serial.Serial(serial_port, baud_rate, timeout=1)
 time.sleep(2)  # 等待 Arduino 初始化
 
