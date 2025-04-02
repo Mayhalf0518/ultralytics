@@ -101,9 +101,7 @@ while cap.isOpened():
     # 影像旋轉 90 度 (順時針)
     frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
 
-    # 影像縮小後顯示
-    frame_resized = cv2.resize(frame, (960, 540))
-    cv2.imshow("YOLOv8 Detection - Real-Time", frame_resized)
+    cv2.imshow("YOLOv8 Detection - Real-Time", frame)
 
     # 按 'q' 退出
     if cv2.waitKey(1) & 0xFF == ord('q'):
