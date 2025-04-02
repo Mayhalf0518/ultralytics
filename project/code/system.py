@@ -2,7 +2,6 @@ import cv2
 import serial
 import time
 import threading
-from collections import Counter  # 用來統計最多出現的類別
 from ultralytics import YOLO
 
 # 初始化 UART 連線
@@ -28,11 +27,7 @@ colors = {
     "Chipped Pill": (0, 0, 255)  # 紅色
 }
 
-# 變數
 last_sent = None  # 記錄上一次傳送的結果
-frame_counter = 0  # 計數前3幀
-pill_detected = False  # 是否偵測到藥丸
-label_counts = []  # 記錄前 3 幀的分類結果
 
 # **讀取 Arduino 回傳的數據 (執行緒)**
 def read_serial():
@@ -54,8 +49,7 @@ while cap.isOpened():
     # 進行 YOLOv8 物件偵測 (信心度 >= 0.9)
     results = model(frame, conf=0.9, verbose=False)
 
-    detected_label = None  # 紀錄目前辨識到的結果
-    detected_something = False  # 是否偵測到任何藥丸
+    detected_label = None  # 紀錄目前偵測到的結果
 
     for result in results:
         for box in result.boxes:
@@ -68,40 +62,21 @@ while cap.isOpened():
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)  
             cv2.putText(frame, f"{label} {conf:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-            detected_something = True  # 有偵測到藥丸
-
+            # 偵測到藥丸時，立即傳送結果
             if label == "Chipped Pill":
                 detected_label = "1"  # 瑕疵
             elif label == "Intact Pill":
                 detected_label = "0"  # 良好
 
-    # **當藥丸進入畫面 (新的偵測)**
-    if detected_something and not pill_detected:
-        frame_counter = 0  # **重置計數**
-        label_counts = []  # **重置前 3 幀的標籤**
-        pill_detected = True  # **標記藥丸進入**
+    # **如果有偵測結果，立即發送**
+    if detected_label is not None and detected_label != last_sent:
+        ser.write((detected_label + "\n").encode())  
+        print(f"發送至 Arduino: {detected_label}")
+        last_sent = detected_label  # 記錄最後發送的結果
     
-    # **只在前 3 幀內統計結果**
-    if detected_label is not None and frame_counter < 3:
-        label_counts.append(detected_label)  
-        frame_counter += 1  # **增加計數**
-    
-    # **當 frame_counter == 3 時，選擇最多出現的標籤並發送**
-    if frame_counter == 3 and label_counts:
-        most_common_label = Counter(label_counts).most_common(1)[0][0]  # 找出最多次出現的結果
-        if most_common_label != last_sent:
-            ser.write((most_common_label + "\n").encode())  
-            print(f"發送至 Arduino: {most_common_label}")
-            last_sent = most_common_label  # 記錄最後發送的結果
-    
-    # **如果藥丸離開畫面，重置狀態**
-    if not detected_something:
-        pill_detected = False  # **等待下一顆藥丸**
-    
-    # 影像旋轉 90 度 (順時針)
-    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-
-    cv2.imshow("YOLOv8 Detection - Real-Time", frame)
+    # 影像縮小後顯示
+    frame_resized = cv2.resize(frame, (960, 540))
+    cv2.imshow("YOLOv8 Detection - Real-Time", frame_resized)
 
     # 按 'q' 退出
     if cv2.waitKey(1) & 0xFF == ord('q'):
