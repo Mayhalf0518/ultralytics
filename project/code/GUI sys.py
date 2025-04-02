@@ -3,10 +3,10 @@ import cv2
 import serial
 import time
 import threading
-import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, Qt
+
 
 # === 1️⃣ 初始化 Arduino 串口 ===
 serial_port = "COM7"
@@ -41,8 +41,10 @@ class MainWindow(QWidget):
         self.good_label = QLabel("良品: 0", self)
         self.yield_label = QLabel("良率: 0.00%", self)
         
+        # **調整文字對齊**
         for label in [self.total_label, self.good_label, self.yield_label]:
-            label.setStyleSheet("font-size: 20px;")
+            label.setAlignment(Qt.AlignCenter)  # **文字置中**
+            label.setStyleSheet("font-size: 24px; font-weight: bold; color: black;")  # **調整大小、加粗**
             right_layout.addWidget(label)
 
         main_layout.addLayout(right_layout)
@@ -68,7 +70,7 @@ class MainWindow(QWidget):
         while True:
             if ser.in_waiting > 0:
                 received_data = ser.readline().decode().strip()
-                print(f"[Arduino 回應] {received_data}")
+                print(f"{received_data}")
 
                 if received_data.isdigit():
                     num = int(received_data)
@@ -78,7 +80,7 @@ class MainWindow(QWidget):
 
                     # 計算良率
                     rate = (self.good_count / self.total_count) * 100 if self.total_count > 0 else 0
-
+                    
                     # 更新 GUI
                     self.total_label.setText(f"總數: {self.total_count}")
                     self.good_label.setText(f"良品: {self.good_count}")
