@@ -3,92 +3,88 @@ import cv2
 import serial
 import time
 import threading
+from collections import Counter
+from ultralytics import YOLO
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
 
-
-# === 1️⃣ 初始化 Arduino 串口 ===
+# UART 初始化
 serial_port = "COM7"
-baud_rate = 4800
+baud_rate = 9600
 ser = serial.Serial(serial_port, baud_rate, timeout=1)
-time.sleep(2)  # 等待 Arduino 初始化
+time.sleep(2)
 
-# === 2️⃣ 設定攝影機串流來源 ===
+# 相機來源
 ip_address = "10.22.54.143"
 port = "8080"
 camera_link = f"http://{ip_address}:{port}/video"
 
-# === 3️⃣ 建立 PyQt 介面 ===
-class MainWindow(QWidget):
+# 載入模型
+model_path = r"C:/Yolov8/ultralytics/segment/train1/weights/best.pt"
+model = YOLO(model_path)
+
+# 顏色設定
+colors = {
+    "Intact Pill": (255, 0, 0),
+    "Chipped Pill": (0, 0, 255)
+}
+
+class PillDetectionApp(QWidget):
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("智慧藥檢")
+        self.setGeometry(100, 100, 960, 540)
 
-        self.setWindowTitle("藥品缺陷檢測系統")
-        self.setGeometry(100, 100, 1280, 720)
-
-        # 設定主畫面布局
         main_layout = QHBoxLayout()
 
-        # 左側影像顯示區域
+        # 左側影像顯示區
         self.camera_label = QLabel(self)
         self.camera_label.setFixedSize(960, 720)
         main_layout.addWidget(self.camera_label)
 
-        # 右側計數資訊
+        # 右側數據顯示（先顯示靜態文字）
         right_layout = QVBoxLayout()
         self.total_label = QLabel("總數: 0", self)
         self.good_label = QLabel("良品: 0", self)
         self.yield_label = QLabel("良率: 0.00%", self)
-        
-        # **調整文字對齊**
         for label in [self.total_label, self.good_label, self.yield_label]:
-            label.setAlignment(Qt.AlignCenter)  # **文字置中**
-            label.setStyleSheet("font-size: 24px; font-weight: bold; color: black;")  # **調整大小、加粗**
+            label.setAlignment(Qt.AlignCenter)
+            label.setStyleSheet("font-size: 24px; font-weight: bold; color: black;")
             right_layout.addWidget(label)
 
         main_layout.addLayout(right_layout)
         self.setLayout(main_layout)
 
-        # 啟動相機串流
+        # 啟動攝影機執行緒
         self.camera_thread = CameraThread()
         self.camera_thread.image_signal.connect(self.update_camera)
         self.camera_thread.start()
 
-        # 啟動 Arduino 串口讀取執行緒
-        self.total_count = 0
-        self.good_count = 0
+        # 啟動串口接收執行緒
         serial_thread = threading.Thread(target=self.read_serial, daemon=True)
         serial_thread.start()
 
     def update_camera(self, qimage):
-        """更新 GUI 上的攝影機畫面"""
         self.camera_label.setPixmap(QPixmap.fromImage(qimage))
 
     def read_serial(self):
-        """從 Arduino 接收數據並更新計數"""
         while True:
             if ser.in_waiting > 0:
-                received_data = ser.readline().decode().strip()
-                print(f"{received_data}")
+                data = ser.readline().decode().strip()
+                print(f"[Arduino 回應] {data}")
 
-                if received_data.isdigit():
-                    num = int(received_data)
-                    self.total_count += 1
-                    if num == 0:
-                        self.good_count += 1
-
-                    # 計算良率
-                    rate = (self.good_count / self.total_count) * 100 if self.total_count > 0 else 0
-                    
-                    # 更新 GUI
-                    self.total_label.setText(f"總數: {self.total_count}")
-                    self.good_label.setText(f"良品: {self.good_count}")
-                    self.yield_label.setText(f"良率: {rate:.2f}%")
-
-# === 4️⃣ 影像處理執行緒 (QThread) ===
+# === 影像處理執行緒（含 YOLO 與 GUI 顯示） ===
 class CameraThread(QThread):
     image_signal = pyqtSignal(QImage)
+
+    def __init__(self):
+        super().__init__()
+        self.cooldown_frames = 30
+        self.cooldown_counter = 0
+        self.frame_counter = 0
+        self.pill_detected = False
+        self.label_counts = []
 
     def run(self):
         cap = cv2.VideoCapture(camera_link)
@@ -96,22 +92,80 @@ class CameraThread(QThread):
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
-                break
+                continue
 
-            # 轉換影像格式
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            h, w, ch = frame.shape
-            bytes_per_line = ch * w
-            qimage = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
 
-            # 傳送影像至 GUI
+            frame = cv2.resize(frame, (640, 480))
+            # YOLO 推論（含 Segmentation）
+            results = model(frame, conf=0.7, verbose=False)
+            result = results[0]
+
+            # 自動繪製包含遮罩的圖像
+            annotated_frame = frame.copy()
+            if result.boxes is not None:
+                for box in result.boxes:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    conf = float(box.conf[0])
+                    class_id = int(box.cls[0])
+                    label = model.names[class_id]
+
+                    color = colors.get(label, (255, 255, 255))
+                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 3)
+                    cv2.putText(annotated_frame, f"{label} {conf:.2f}", (x1, y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+            # 轉成 QImage 給 PyQt 顯示
+            rgb_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+            h, w, ch = rgb_frame.shape
+            qimage = QImage(rgb_frame.data, w, h, ch * w, QImage.Format_RGB888)
             self.image_signal.emit(qimage)
+
+            # 更新冷卻計數
+            if self.cooldown_counter > 0:
+                self.cooldown_counter -= 1
+
+            # 判斷是否有偵測到藥丸
+            detected_label = None
+            detected_something = False
+
+            if result.boxes is not None:
+                for box in result.boxes:
+                    class_id = int(box.cls[0])
+                    label = model.names[class_id]
+                    detected_something = True
+                    if label == "Chipped Pill":
+                        detected_label = "1"
+                    elif label == "Intact Pill":
+                        detected_label = "0"
+
+            # 執行判斷與發送邏輯
+            if self.cooldown_counter == 0:
+                if detected_something and not self.pill_detected:
+                    self.frame_counter = 0
+                    self.label_counts = []
+                    self.pill_detected = True
+
+                if detected_label is not None and self.frame_counter < 3:
+                    self.label_counts.append(detected_label)
+                    self.frame_counter += 1
+
+                if self.frame_counter == 3 and self.label_counts:
+                    most_common_label = Counter(self.label_counts).most_common(1)[0][0]
+                    ser.write((most_common_label + "\n").encode())
+                    print(f"發送至 Arduino: {most_common_label}")
+                    self.pill_detected = False
+                    self.frame_counter = 0
+                    self.label_counts = []
+                    self.cooldown_counter = self.cooldown_frames
+
+            if not detected_something:
+                self.pill_detected = False
 
         cap.release()
 
-# === 5️⃣ 啟動應用程式 ===
+# 啟動應用程式
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = PillDetectionApp()
     window.show()
     sys.exit(app.exec_())
