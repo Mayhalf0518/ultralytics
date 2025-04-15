@@ -5,7 +5,7 @@ import time
 import threading
 from collections import Counter
 from ultralytics import YOLO
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSizePolicy
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
 
@@ -37,28 +37,37 @@ class PillDetectionApp(QWidget):
         self.setGeometry(100, 100, 960, 540)
 
         main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)  # 外距
+        main_layout.setSpacing(30)  # 左右區域的間距
 
         # 左側影像顯示區
         self.camera_label = QLabel(self)
-        self.camera_label.setFixedSize(960, 720)
-        main_layout.addWidget(self.camera_label)
+        self.camera_label.setStyleSheet("background-color: #ccc;")  # 灰底方便排版時測試
+        self.camera_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # ⭐自動撐滿左側空間
+        self.camera_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.camera_label, stretch=3)  # ⭐給它更多伸展空間
 
         # 右側數據顯示（先顯示靜態文字）
         right_layout = QVBoxLayout()
+        right_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)  # 靠左上對齊
+        right_layout.setSpacing(20)
+
         self.total_label = QLabel("總數: 0", self)
         self.good_label = QLabel("良品: 0", self)
         self.yield_label = QLabel("良率: 0.00%", self)
+
         for label in [self.total_label, self.good_label, self.yield_label]:
             label.setAlignment(Qt.AlignCenter)
             label.setStyleSheet("font-size: 24px; font-weight: bold; color: black;")
             right_layout.addWidget(label)
 
-        main_layout.addLayout(right_layout)
+        main_layout.addLayout(right_layout, stretch=1)  # ⭐右側占比較少空間
         self.setLayout(main_layout)
 
         # 啟動攝影機執行緒
         self.camera_thread = CameraThread()
         self.camera_thread.image_signal.connect(self.update_camera)
+        self.camera_thread.stats_signal.connect(self.update_stats)
         self.camera_thread.start()
 
         # 啟動串口接收執行緒
@@ -74,17 +83,26 @@ class PillDetectionApp(QWidget):
                 data = ser.readline().decode().strip()
                 print(f"[Arduino 回應] {data}")
 
+    def update_stats(self, total, good):
+        self.total_label.setText(f"總數: {total}")
+        self.good_label.setText(f"良品: {good}")
+        yield_rate = (good / total) * 100 if total > 0 else 0.0
+        self.yield_label.setText(f"良率: {yield_rate:.2f}%")
 # === 影像處理執行緒（含 YOLO 與 GUI 顯示） ===
 class CameraThread(QThread):
     image_signal = pyqtSignal(QImage)
 
+    stats_signal = pyqtSignal(int, int)  # 傳送總數、良品數
+
     def __init__(self):
         super().__init__()
-        self.cooldown_frames = 30
+        self.cooldown_frames = 40
         self.cooldown_counter = 0
         self.frame_counter = 0
         self.pill_detected = False
         self.label_counts = []
+        self.total_count = 0
+        self.good_count = 0
 
     def run(self):
         cap = cv2.VideoCapture(camera_link)
@@ -153,10 +171,17 @@ class CameraThread(QThread):
                     most_common_label = Counter(self.label_counts).most_common(1)[0][0]
                     ser.write((most_common_label + "\n").encode())
                     print(f"發送至 Arduino: {most_common_label}")
+
+                    self.total_count += 1
+                    if most_common_label == "0":
+                        self.good_count += 1
+                    
                     self.pill_detected = False
                     self.frame_counter = 0
                     self.label_counts = []
                     self.cooldown_counter = self.cooldown_frames
+
+                    self.stats_signal.emit(self.total_count, self.good_count)
 
             if not detected_something:
                 self.pill_detected = False
