@@ -5,9 +5,10 @@ import time
 import threading
 from collections import Counter
 from ultralytics import YOLO
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSizePolicy
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSizePolicy, QPushButton
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
+
 
 # UART 初始化
 serial_port = "COM7"
@@ -52,14 +53,22 @@ class PillDetectionApp(QWidget):
         right_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)  # 靠左上對齊
         right_layout.setSpacing(20)
 
+        self.pill_label = QLabel("藥物種類: 藥丸")
         self.total_label = QLabel("總數: 0", self)
         self.good_label = QLabel("良品: 0", self)
         self.yield_label = QLabel("良率: 0.00%", self)
 
-        for label in [self.total_label, self.good_label, self.yield_label]:
-            label.setAlignment(Qt.AlignCenter)
+        for label in [self.pill_label, self.total_label, self.good_label, self.yield_label]:
+            label.setAlignment(Qt.AlignLeft)
             label.setStyleSheet("font-size: 24px; font-weight: bold; color: black;")
             right_layout.addWidget(label)
+
+        # === 重設按鈕 ===
+        self.reset_button = QPushButton("重設計數", self)
+        self.reset_button.setStyleSheet("font-size: 18px; padding: 10px;")
+        self.reset_button.clicked.connect(self.reset_counts)
+        right_layout.addStretch(1)  # 將按鈕推到底部
+        right_layout.addWidget(self.reset_button)
 
         main_layout.addLayout(right_layout, stretch=1)  # ⭐右側占比較少空間
         self.setLayout(main_layout)
@@ -88,6 +97,12 @@ class PillDetectionApp(QWidget):
         self.good_label.setText(f"良品: {good}")
         yield_rate = (good / total) * 100 if total > 0 else 0.0
         self.yield_label.setText(f"良率: {yield_rate:.2f}%")
+
+    def reset_counts(self):
+        self.camera_thread.total_count = 0
+        self.camera_thread.good_count = 0
+        self.update_stats(0, 0)
+        print("[系統] 計數已重設")
 # === 影像處理執行緒（含 YOLO 與 GUI 顯示） ===
 class CameraThread(QThread):
     image_signal = pyqtSignal(QImage)
