@@ -1,6 +1,6 @@
-train: C:\Users\owner\Downloads\YOLOv8\ultralytics\Pharmaceutical.v9-721-new.yolov8\train\images
-val: C:\Users\owner\Downloads\YOLOv8\ultralytics\Pharmaceutical.v9-721-new.yolov8\valid\images
-test: C:\Users\owner\Downloads\YOLOv8\ultralytics\Pharmaceutical.v9-721-new.yolov8\test\images
+train: C:\YOLOv8\ultralytics\Pharmaceutical.v9-721-new.yolov8\train\images
+val: C:\YOLOv8\ultralytics\Pharmaceutical.v9-721-new.yolov8\valid\images
+test: C:\Yolov8\ultralytics\Pharmaceutical.v9-721-new.yolov8\test\images
 
 nc: 2
 names: ['Chipped Pill', 'Intact Pill']

@@ -1,5 +1,5 @@
 訓練模型：
-yolo task=segment mode=train model=yolov8n-seg.pt data=C:\Yolov8\ultralytics\Capsule.v4-defective-721.yolov8\data.yaml epochs=100 imgsz=960 project=segment name=train
+yolo task=segment mode=train model=yolov8n-seg.pt data=C:\Yolov8\ultralytics\Pharmaceutical.v9-721-new.yolov8\data.yaml epochs=100 imgsz=960 project=segment name=train
 (路徑要改)
 
 圖片辨識：
