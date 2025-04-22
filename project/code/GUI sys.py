@@ -10,11 +10,21 @@ from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
 
 
+# UART 初始化與自動重連
+def init_serial(port, baudrate):
+    while True:
+        try:
+            ser = serial.Serial(port, baudrate, timeout=1)
+            print(f"[系統] 成功連接到 {port}")
+            return ser
+        except serial.SerialException as e:
+            print(f"[警告] 串口錯誤: {e}，3秒後重試...")
+            time.sleep(3)
+
 # UART 初始化
 serial_port = "COM7"
 baud_rate = 9600
-ser = serial.Serial(serial_port, baud_rate, timeout=1)
-time.sleep(2)
+ser = init_serial(serial_port, baud_rate)
 
 # 相機來源
 ip_address = "10.22.54.143"
@@ -102,7 +112,10 @@ class PillDetectionApp(QWidget):
         self.camera_thread.total_count = 0
         self.camera_thread.good_count = 0
         self.update_stats(0, 0)
+        if ser.is_open:
+            ser.write(b"RESET\n")  # Arduino 那邊接收到 "RESET" 可以清除狀態
         print("[系統] 計數已重設")
+
 # === 影像處理執行緒（含 YOLO 與 GUI 顯示） ===
 class CameraThread(QThread):
     image_signal = pyqtSignal(QImage)
@@ -184,8 +197,12 @@ class CameraThread(QThread):
 
                 if self.frame_counter == 3 and self.label_counts:
                     most_common_label = Counter(self.label_counts).most_common(1)[0][0]
-                    ser.write((most_common_label + "\n").encode())
-                    print(f"發送至 Arduino: {most_common_label}")
+
+                    try:
+                        ser.write((most_common_label + "\n").encode())
+                        print(f"發送至 Arduino: {most_common_label}")
+                    except serial.SerialException as e:
+                        print(f"[錯誤] 發送失敗: {e}")
 
                     self.total_count += 1
                     if most_common_label == "0":
@@ -208,4 +225,9 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = PillDetectionApp()
     window.show()
-    sys.exit(app.exec_())
+    try:
+        sys.exit(app.exec_())
+    finally:
+        if ser.is_open:
+            ser.close()
+            print("[系統] 已釋放串口")
