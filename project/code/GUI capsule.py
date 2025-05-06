@@ -32,7 +32,7 @@ port = "8080"
 camera_link = f"http://{ip_address}:{port}/video"
 
 # 載入模型
-model_path = r"C:/Yolov8/ultralytics/segment/train5/weights/best.pt"
+model_path = r"C:/Yolov8/ultralytics/segment/train9/weights/best.pt"
 model = YOLO(model_path)
 
 # 顏色設定
@@ -124,7 +124,7 @@ class CameraThread(QThread):
 
     def __init__(self):
         super().__init__()
-        self.cooldown_frames = 40
+        self.cooldown_frames = 45
         self.cooldown_counter = 0
         self.frame_counter = 0
         self.pill_detected = False
