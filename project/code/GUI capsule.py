@@ -191,11 +191,11 @@ class CameraThread(QThread):
                     self.label_counts = []
                     self.pill_detected = True
 
-                if detected_label is not None and self.frame_counter < 3:
+                if detected_label is not None and self.frame_counter < 10:
                     self.label_counts.append(detected_label)
                     self.frame_counter += 1
 
-                if self.frame_counter == 3 and self.label_counts:
+                if self.frame_counter == 10 and self.label_counts:
                     most_common_label = Counter(self.label_counts).most_common(1)[0][0]
 
                     try:
