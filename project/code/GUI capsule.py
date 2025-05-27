@@ -32,7 +32,7 @@ port = "8080"
 camera_link = f"http://{ip_address}:{port}/video"
 
 # 載入模型
-model_path = r"C:/Yolov8/ultralytics/segment/train9/weights/best.pt"
+model_path = r"C:/Yolov8/ultralytics/segment/Capsule2.0train/weights/best.pt"
 model = YOLO(model_path)
 
 # 顏色設定
