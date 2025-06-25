@@ -32,8 +32,8 @@ port = "8080"
 camera_link = f"http://{ip_address}:{port}/video"
 
 # 載入模型
-model_path = r"C:/Yolov8/ultralytics/segment/Capsule2.0train/weights/best.pt"
-model = YOLO(model_path)
+model_path = r"C:/Yolov8/ultralytics/segment/Capsule2.0train5/weights/best.pt"
+model =YOLO(model_path)
 
 # 顏色設定
 colors = {
@@ -143,7 +143,7 @@ class CameraThread(QThread):
 
             frame = cv2.resize(frame, (640, 480))
             # YOLO 推論（含 Segmentation）
-            results = model(frame, conf=0.7, verbose=False)
+            results = model(frame, conf=0.6, verbose=False)
             result = results[0]
 
             # 自動繪製包含遮罩的圖像
